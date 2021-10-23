@@ -1,0 +1,355 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Student rating
+  description: Варіант 12. Створити сервіс для збереження та редагування рейтингу студентів. Для зберігання даних про студента використовувати json. Також реалізувати можливість отримання списку кращих за рейтингом студентів.
+tags:
+  - name: students
+    description: Студенти та операції над ними, що доступні працівнику деканату
+  - name: university
+    description: Університет, в якому є студенти
+  - name: user
+    description: Містить інформацію про користувача та виконує операції над ним
+
+paths:
+  /students:
+    post:
+      tags:
+        - students
+      summary: Додати студента у базу
+      description: Користуватися може тільки працівник деканату
+      operationId: addNewStudent
+      security:
+        - secretary_api_key: []
+      responses:
+        '200':
+          description: Студент успішно доданий
+        '400':
+          description: Неправильний запит
+      requestBody:
+        $ref: '#/components/requestBodies/Students'
+  /students/{id_student}:
+    put:
+      tags:
+        - students
+      summary: Оновити інформацію про певного студента
+      description: Користуватися може тільки працівник деканату
+      operationId: updateStudent
+      parameters:
+      - name: id_student
+        in: path
+        required: true
+        schema:
+          type: integer
+      security:
+        - secretary_api_key: []
+      responses:
+        '200':
+          description: Успішне оновлення
+        '400':
+          description: Неіснуючий код працівника деканату
+        '404':
+          description: Неіснуючий студент
+      requestBody:
+        $ref: '#/components/requestBodies/Students'
+    get:
+      tags:
+      - students
+      summary: Отримати студента з бази за індексом
+      operationId: getIdStudent
+      parameters:
+      - name: id_student
+        in: path
+        required: true
+        schema:
+          type: integer
+            
+      responses:
+        '200':
+          description: Інформацію про студента успішно отримано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Students'
+        '400':
+          description: Неправильний ввід
+        '404':
+          description: Студента не знайдено
+    delete:
+      tags:
+        - students
+      summary: Видалити студента з бази за індексом
+      description: Користуватися може тільки працівник деканату
+      operationId: deleteIdStudent
+      security:
+        - secretary_api_key: []
+      parameters:
+        - name: id_student
+          in: path
+          description: Id студнта, якого необхідно видалити
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Студента успішно видалено
+        '400':
+          description: Недопустиме значення
+        '404':
+          description: Студента не знайдено
+  /university/top:
+    get:
+      tags:
+      - "university"
+      summary: "Повертає х найкращих студентів"
+      parameters:
+      - name: count
+        in: query
+        description: Кількість студентів, які повернулися
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Інформацію успішно знайдено
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Students'
+        '400':
+          description: Неправильний запит
+                  
+  /user:
+    post:
+      tags:
+        - user
+      summary: Створити нового користувача
+      description: Тільки для зареєстрованих користувачів
+      operationId: createUser
+      security:
+        - secretary_api_key: []
+      responses:
+        '200':
+          description: Користувач успішно доданий
+        '400':
+          description: Неправильний запит
+      requestBody:
+        $ref: '#/components/requestBodies/User'
+  /user/login:
+    get:
+      tags:
+        - user
+      summary: Вхід користувача в систему
+      operationId: loginUser
+      parameters:
+        - name: username
+          in: query
+          description: Логін
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          description: Пароль
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Вхід виконано успішно
+          headers:
+            X-Rate-Limit:
+              description: calls per hour allowed by the user
+              schema:
+                type: integer
+                format: int32
+            X-Expires-After:
+              description: date in UTC when token expires
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Неправильний логін або пароль
+  /user/logout:
+    get:
+      tags:
+        - user
+      summary: Вихід користувача з системи
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Вихід завершився з успіхом
+  /user/{username}:
+    get:
+      tags:
+        - user
+      summary: Отримати інформацію про користувача по імені
+      operationId: getUserByName
+      security:
+        - secretary_api_key: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Інформація успішно отримана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Неправильне ім'я користувача
+        '404':
+          description: Користувач не знайлений
+    put:
+      tags:
+        - user
+      summary: Оновити інформацію про користувача
+      description: Тільки для зареєстрованих користувачів
+      operationId: updateUser
+      security:
+        - user_auth:
+            - write:order
+            - read:order
+      parameters:
+        - name: username
+          in: path
+          description: Ім'я користувача
+          required: true
+          schema:
+            type: string
+      responses:
+        '400':
+          description: Недопустиме ім'я
+        '404':
+          description: Користувач не знайдений
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+    delete:
+      tags:
+        - user
+      summary: Видалити користувача
+      description: Тільки для зареєстрованих користувачів
+      operationId: deleteUser
+      security:
+        - user_auth:
+            - write:order
+            - read:order
+      parameters:
+        - name: username
+          in: path
+          description: Ім'я користувача, якого необхідно видалити
+          required: true
+          schema:
+            type: string
+      responses:
+        '400':
+          description: Недопустиме ім'я
+        '404':
+          description: Користувач не знайдений
+components:
+  schemas:
+    Students:
+      type: object
+      properties:
+        id_student:
+          type: integer
+          format: int64
+        name_student:
+          type: string
+        last_name_st:
+          type: string
+        date_of_birth:
+          type: string
+        email:
+          type: string
+        major:
+          $ref: "#/components/schemas/Major"
+        rating:
+          type: integer
+        marks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Mark"
+    Major:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    Mark:
+      type: object
+      properties:
+        subject:
+          $ref: "#/components/schemas/Subject"
+        grade:
+          type: integer
+    Subject:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    User:
+      type: object
+      properties:
+        id_user:
+          type: integer
+          format: int64
+        username:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        phone:
+          type: string
+
+  requestBodies:
+    Students:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Students'
+      description: Студент, який буде додано в базу
+      required: true
+    User:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/User'
+      description: Користувач, який буде доданий в базу
+      required: true
+  securitySchemes:
+    secretary_api_key:
+      type: apiKey
+      name: secretary_api_key
+      in: header
+    user_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: http://petstore.swagger.io/oauth/dialog
+          scopes:
+            write:student: modify student data
